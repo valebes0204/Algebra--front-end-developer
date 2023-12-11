@@ -17,17 +17,38 @@ postoje 4 bitne metode kod lokalne memorije:
 4. localStorage.clear(); - briše sve zapisano u lokalnom storageu
 */
 
+// funkcija koja učitava zadatke iz localStoragea prilikom uploadanja DOM-a
+const prikaziZadatkeLocalStoragea = () => {
+  const zadaciSpremiste = dohvatiLocalStorage();
+  zadaciSpremiste.forEach((zadatak) => kreirajZadatak(zadatak));
+  provjeriListu();
+};
+
 // funkcija za dodavanje novih zadataka
 const dodajZadatak = (e) => {
   e.preventDefault();
 
-  if (zadatakInput.value === "") {
+  // moramo inicijalizirati varijablu da nam bude dostupna u ovoj provjeri, ali i nakon toga
+  const noviZadatak = zadatakInput.value.trim(); // trimom ne dopuštamo da se u inputu računaju prazni razmaci
+
+  if (noviZadatak === "") {
     alert("Molimo Vas unesite podatak");
     return;
   }
 
+  kreirajZadatak(noviZadatak);
+  provjeriListu();
+
+  // ovdje pozivamo localStorage funkciju kada kreiramo zadatak, a kao parametar prosljeđujemo string tj. vrijednost iz inputa
+  dodajLocalStorage(zadatakInput.value);
+
+  zadatakInput.value = "";
+};
+
+// funkcija za kreiranje elemenata izvučena iz funkcije dodajZadatak (potrebna je još za localStorage pa radimo jednu funkciju za oba mjesta)
+const kreirajZadatak = (noviZadatak) => {
   const li = document.createElement("li");
-  li.appendChild(document.createTextNode(zadatakInput.value));
+  li.appendChild(document.createTextNode(noviZadatak));
 
   const delGumb = document.createElement("button");
   delGumb.className = "ukloni-zadatak btn-link";
@@ -39,16 +60,17 @@ const dodajZadatak = (e) => {
   li.appendChild(delGumb);
   listaZadataka.appendChild(li);
 
-  provjeriListu();
+  // funkcija za pozivanje iz localStoragea
+  const dodajLocalStorage = (zadatakInput) => {
+    const zadaciSpremiste = dohvatiLocalStorage();
 
-  // ovdje pozivamo localStorage funkciju kada kreiramo zadatak, a kao parametar prosljeđujemo string tj. vrijednost iz inputa
-  dodajLocalStorage(zadatakInput.value);
-
-  zadatakInput.value = "";
+    zadaciSpremiste.push(zadatakInput); // novi zadatak se pusha u spremiste
+    localStorage.setItem("kljuc", JSON.stringify(zadaciSpremiste)); // na kraju se zapisuje u localStorage
+  };
 };
 
-// funkcija za dodavanje vrijednosti u localStorage
-const dodajLocalStorage = (zadatakInput) => {
+// funkcija za dohvaćanje iz localStoragea
+const dohvatiLocalStorage = () => {
   let zadaciSpremiste;
 
   /* provjeravamo imamo li spremljeno nešto u local storageu - ako ne, onda se stvara prazna lista,
@@ -59,21 +81,35 @@ const dodajLocalStorage = (zadatakInput) => {
     zadaciSpremiste = JSON.parse(localStorage.getItem("kljuc"));
   }
 
-  zadaciSpremiste.push(zadatakInput); // novi zadatak se pusha u spremiste
-  localStorage.setItem("kljuc", JSON.stringify(zadaciSpremiste)); // na kraju se zapisuje u localStorage
+  return zadaciSpremiste;
 };
 
-// funkcija za brisanje pojedinačnog zadatka
+// funkcija za pripremu brisanja pojedinačnog zadatka - stavljamo selekciju zadatka kojeg smo kliknuli....
 const obrisiZadatak = (e) => {
   if (e.target.parentElement.classList.contains("ukloni-zadatak")) {
-    e.target.parentElement.parentElement.remove();
+    ukloniZadatak(e.target.parentElement.parentElement);
   }
   provjeriListu();
+};
+
+// funkcija za brisanje podatka iz DOM-a i LS-a
+const ukloniZadatak = (zadatakIzDOM) => {
+  zadatakIzDOM.remove();
+  obrisiIzLS(zadatakIzDOM.textContent);
+  provjeriListu;
+};
+
+// funkcija za slaganje logike brisanja iz LS-a
+const obrisiIzLS = (tekstZadatka) => {
+  let zadatakIzStoragea = dohvatiLocalStorage();
+  zadatakIzStoragea = zadatakIzStoragea.filter((z) => z !== tekstZadatka);
+  localStorage.setItem("kljuc", JSON.stringify(zadatakIzStoragea));
 };
 
 // funkcija za brisanje svih zadataka
 const obrisiZadatke = () => {
   listaZadataka.innerHTML = "";
+  localStorage.removeItem("kljuc");
   provjeriListu();
 };
 
@@ -110,5 +146,6 @@ forma.addEventListener("submit", dodajZadatak);
 listaZadataka.addEventListener("click", obrisiZadatak);
 brisiSve.addEventListener("click", obrisiZadatke);
 filter.addEventListener("input", filtrirajZadatke);
+document.addEventListener("DOMContentLoaded", prikaziZadatkeLocalStoragea);
 
 provjeriListu();
